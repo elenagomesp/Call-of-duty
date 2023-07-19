@@ -1,0 +1,719 @@
+---
+title: "HOMEWORK 1"
+author: "Elena Gómez Espinosa"
+date: "UC3M, 2021"
+output:
+  html_document: default
+  word_document: default
+---
+```{r global_options, include=T, echo = F}
+knitr::opts_chunk$set(echo = T, warning=FALSE, message=FALSE)
+```
+
+
+
+
+```{r}
+library(ggplot2)
+```
+
+## Data preprocessing
+**Exploring the data**
+
+In this project I am going to used a database about call of duty players skills. Call of Duty is a first-person shooter video game. I am aware that the database is not too large, but I started the project with a bigger one and I had plenty of problems because my laptop did not have power enough to execute some models, so I decided to use a smaller one in order to do the hole project without any problem.
+```{r}
+
+setwd("C:/Users/elepu/OneDrive/Escritorio/1º CUATRI/APRENDIZAJE ESTADÍSTICO/project 1")
+data = read.csv(file = "cod.csv",
+                header = T, sep = ",", dec = ".")
+```
+
+As I have said, the variables are related with call of duty players skills.Here they are explained:
+
+name: the name for each player
+wins : number of times the player win a match
+kills : number of kills the player made in all his matches
+kdRatio : kill/deaths ratio that means, if a player has 10 kills and 5 deaths, his KD ratio is equal to 2. A KD ratio of 1 means that the player got killed exactly as many times as he successfully eliminated his opponents
+killstreak : kill a number of enemy players without dying.
+level : is the player grade
+losses : total number of losing
+prestige: it is an optional Mode that players can choose after they progress to Level 55 and max
+hits : number of times the player damaged another player
+timePlayed : the time spent by every player playing Call of Duty in hours
+headshots : number of times the player hit the others with headshots
+averageTime : average time
+gamesPlayed : number of times the player play multiplayer match
+assists : number of times player damaging an enemy but a teammate gets the kill.
+misses : the number of times the player miss the hit
+xp : Experience Points (XP) are a numerical quantity exclusive to multiplayer that dictates a player's level and progress in the game.
+scorePerMinute :a measure of how many points players are gaining per unit time.
+shots :total number of shots the player did
+deaths : number of time the player gots killed in the game.
+The data base is from https://www.kaggle.com/aishahakami/call-of-duty-players
+
+
+
+Firstly, we are going to take a look to become familiar with the data base
+```{r}
+str(data)
+head(data)
+summary(data)
+```
+
+
+
+
+To begin with, we are going to prepare our database.Preparing the input is the most important part of the process,not having a clean database before developing different models makes next steps more difficult. We have data, but we have to clean it because if not it can be useless.
+
+**Missing values**
+We are going to see if there are missing values in the database.
+```{r}
+sum(is.na(data))
+```
+
+There are not missing values, so we can continue without removing any variable or observation.
+
+
+**Irrelevant variables**
+From my point of view, all the variables of the database are interesting. But there is one that will not be very usefull later. We will remove "prestige" because it refers to  modes that the player can choose after progress to level 55. 
+```{r}
+typeof(data$prestige)
+data$prestige=NULL
+```
+It should not be consider as a integer but if we convert it into another type of data which is not number or integer, it would be an useless variables for the models, so we remove it.
+
+
+**Converting variables**
+```{r}
+str(data)
+```
+As we can see, all the variables except the name are consider as numbers or integers. There are not any variable that we have to convert because the type of each variables makes sense.
+
+
+**Creating new variables**
+Now, we are going to create new variables using the ones that we already have.
+
+The first variable that we are going to create is hsps which is shotshead/shots. 
+```{r}
+for (i in 1:nrow(data)){
+  if (data$headshots[i]==0){
+    data$hsps[i]=0
+  }
+  if (data$shots[i]==0){
+    data$hsps[i]=0
+  }else{
+  data$hsps[i]=data$headshots[i]/data$shots[i]
+  }
+}
+
+
+
+```
+
+
+We are also going to create the percentage of games won taking into account the games played.
+The new variable will be called wpRation
+```{r}
+for (i in 1:nrow(data)){
+  if (data$wins[i]==0){
+    data$wpRatio[i]=0
+  }
+  if (data$gamesPlayed[i]==0){
+    data$wpRatio[i]=0
+  }else{
+  data$wpRatio[i]=data$wins[i]/data$gamesPlayed[i]
+  }
+}
+```
+
+
+
+
+The last variable that we will create will be called ksk and it is killstreak/kills, the number of times that the player  kill a number of enemy players without dying over the total number of times that the player kill an enemy player.
+```{r}
+for (i in 1:nrow(data)){
+  if (data$kills[i]==0){
+    data$ksk[i]=0
+  }
+  if (data$killstreak[i]==0){
+    data$ksk[i]=0
+  }else{
+  data$ksk[i]=data$killstreak[i]/data$kills[i]
+  }
+}
+```
+
+After using some tools I return to that point of the project, because I have realised that the variables that I had created difficult the proccess instead of helping. So although I had created with the aim of help, I think that is better to remove them.
+```{r}
+data$hsps=NULL
+data$wpRatio=NULL
+data$ksk=NULL
+```
+
+
+**Outliers**
+We are going to represent all the numerical and integers variable in different boxplots in order to know if aur database has oultiers. We are going to scale the data before plotting it.
+```{r}
+data1=data[-1]
+boxplot(scale(data1), las=2, col="darkblue")
+```
+
+As we can see there are plenty outliers in our database.
+We will plot some variables alone to see outliers better.
+```{r}
+ggplot(data)+aes(x =wins)+geom_boxplot(fill="#ADD8E6")
+ggplot(data)+aes(x = kills)+geom_boxplot(fill="#F08080")
+ggplot(data)+aes(x = timePlayed)+geom_boxplot(fill="#90EE90")
+ggplot(data)+aes(x = shots)+geom_boxplot(fill="#DDA0DD")
+ggplot(data)+aes(x = deaths)+geom_boxplot(fill="#DDA0DD")
+```
+
+
+There are too many outliers, but I think that this occurs because the values of different observations are very different. I decide no to remove any observation because I think that every observation will be important for the analysis.
+
+
+
+As they are to many outliers, we can divide the players into levels for visualize the data.
+(inspiration from kaggle)
+```{r}
+#Counting the numbers of players in our classification
+for (i in 1:nrow(data)){
+  if (data$wins[i]<=50){
+    data$level[i]="1 low level"
+  }
+  if (50<data$wins[i] & data$wins[i]<=100){
+    data$level[i]="2 mid level"
+  }
+  if (100<=data$wins[i] & data$wins[i]<=200){
+    data$level[i]="3 high level"
+  }
+  if (data$wins[i]>200){
+    data$level[i]="4 gods"
+  }
+}
+typeof(data$level)
+data$level=as.factor(data$level)
+```
+
+
+
+
+
+
+## Visualization tools to get insights before the tools:
+
+We are going to plot some different variables in order to understand them better and to see the relationship between some variables.
+
+
+First of all we are going to plot a barplot using the variable "level" that we have just created.
+```{r}
+ggplot(data) + aes(x =level) + geom_bar(aes(fill=level))
+```
+As we can see most of the players are in a low level. But there are also plenty of players that are in very high levels.
+
+
+Now we are going to visualize the same variables that we have visualize to see outliers, but dividing by levels. We will realise that dividing by levels there are going to be less outliers
+```{r}
+ggplot(data)+aes(y = wins, fill = level)+
+geom_boxplot()+theme(legend.position = "bottom")
+```
+If the player is in a better lever, he wins more times.
+
+
+```{r}
+ggplot(data)+aes(y = kills, fill = level)+
+geom_boxplot()+theme(legend.position = "bottom")
+```
+If the player is in a better level, he kill more enemies.
+
+
+
+
+```{r}
+ggplot(data)+aes(y = timePlayed, fill = level)+
+geom_boxplot()+theme(legend.position = "bottom")
+```
+Players who are in a higher level play more time.
+
+
+```{r}
+ggplot(data)+aes(y =shots, fill = level)+
+geom_boxplot()+theme(legend.position = "bottom")
+```
+Player who are in a higher level shot more times.
+
+
+
+```{r}
+ggplot(data)+aes(y = deaths, fill = level)+
+geom_boxplot()+theme(legend.position = "bottom")
+```
+Player who are in a higher level die more times.
+
+
+As we can see in the previous boxplots, there are also outliers but no as many as in the boxplot in which we have no split by levels. This occurs because there are a huge different between the values which belong to different levels, because if we divide the values into levels, we are also dividing the outliers into level.
+
+
+
+We will plot some different scatterplots to discover if there exist a relationship between two variables.
+
+
+Let´s start plotting the scatterplot of timePlayed and wins.
+```{r}
+ggplot(data) + aes(x =timePlayed, y=wins) +
+geom_point(color="#F08080") 
+
+```
+As we can see in the plot these two variables have a strong relationship. If a player plays more time, he wins more times.
+
+
+Let´s also see the relation ship between shots and kills.
+
+```{r}
+ggplot(data) + aes(x =shots, y=kills) +
+geom_point(color="#F08080") 
+```
+They also have a strong relationship. If a player makes more shots, he kill more people.
+
+
+
+
+
+
+Finally, we will see the relationship between deaths and kills
+```{r}
+ggplot(data) + aes(x =kills, y=deaths) +
+geom_point(color="#F08080") 
+```
+As we can see, there is a strong relationship between the number of times that a player kill an enemy and the number of times that a player deaths.
+
+
+
+
+
+Finally, let´s plot the variable "timePlayed"
+```{r}
+ggplot(data) + aes(x = timePlayed) +
+geom_histogram(aes(y = ..density..),
+bins = 20,fill="blue", color = "white")+
+theme(text = element_text(size = 6))
+```
+
+
+In there we can see that in the database there are plenty of people that do not play too much.
+Most of the people of the database do not played too much.
+
+
+##PRINCIPAL COMPONENT ANALYSIS
+
+
+The first tool that we will use is PCA.
+This tool represents the multivariate information with a smaller number of variables without loosing much information.
+This tool is usefull if variables are correlated, and as we have seen in the previous scatterplots, we have correlated variables.
+
+```{r}
+library(tidyverse)
+library(GGally) 
+library(factoextra) 
+```
+
+
+
+
+First of all, we are going to prepare the input for the PCA.
+We create an specific database equal to the original one, but we remove the values that are not numeric or integers.
+
+```{r}
+names = data[,1]
+data_pca=data
+data_pca$level=NULL
+data_pca$name=NULL
+dim(data)
+summary(data)
+```
+
+
+Let´s start repeating a descriptive analysis
+Firstly, we plot the data in a boxplot
+```{r}
+boxplot(data_pca, las=2, col="darkblue")
+boxplot(scale(data_pca), las=2, col="darkblue")
+```
+
+
+**correlation between variables**
+
+
+Now, we plot the data in a way that allows as to see the correlation between the variables.
+As more red, more correlated.(PCA consists on replace a large number of correlated variables by a smaller number of uncorrelated ones)
+
+```{r}
+ggcorr(data_pca, label = T)
+```
+
+As we can see there are lots of variables correlated
+
+
+
+**PCA**
+
+
+Let´s apply PCA
+(we use standarized data)
+```{r}
+pca = prcomp(data_pca, scale=T)
+summary(pca)
+```
+
+
+
+**Number of chosen components**
+After doing PCA, let´s plot the percentage of variability that explains each principal component
+
+```{r}
+fviz_screeplot(pca, addlabels = TRUE)
+```
+I´m going to choose 3 components.I think that is the best option because with two components we we explain around 85% of variability and I think that it is enough
+
+**Interpretation of components**
+Now, we will plot the contributions of each variable in each component and we will try to interpret each component
+
+**First component**
+```{r}
+barplot(pca$rotation[,1], las=2, col="darkblue")
+fviz_contrib(pca, choice = "var", axes = 1)
+```
+In PC1 the variables that contributes the most are kills, dealths, shots, headshots, missed,hits,assists,gamesPlayed, wins and xp.
+First component could be an weighted average about  the variables.
+
+**Second component**
+```{r}
+barplot(pca$rotation[,2], las=2, col="darkblue")
+fviz_contrib(pca, choice = "var", axes = 2)
+```
+In PC2 the variables that contributes the most are scorePerMinute, KdRatio, killstreak and  losses as is shown in the plot.
+Maybe the second component is be obtained by contrasting  variables, but I don´t understand how it is really obtained.
+
+
+**Third component**
+```{r}
+barplot(pca$rotation[,3], las=2, col="darkblue")
+fviz_contrib(pca, choice = "var", axes = 3)
+```
+In the third component the variables that contributes the most are averageTime kdRatio, scorePerMinute, killstreak, losses, wpRatio, averageTime,hsps, as we can see in the plot.
+I think that it have been obtained contrasting groups of variables, but i don´t know the specific way.
+
+
+**contribution of each player**
+**first component**
+Now, we are going to see the contribution  of all players to the first component.
+```{r}
+
+fviz_contrib(pca, choice = "ind", axes = 1)
+```
+
+This plot does not allow us to distinguish the names of the player so 
+
+now, let´s see the contribution of the 10 first players
+
+```{r}
+names_z1 = names[order(get_pca_ind(pca)$contrib[,1],decreasing=T)]
+fviz_contrib(pca, choice = "ind", axes = 1, top=10)+scale_x_discrete(labels=names_z1)
+
+```
+
+
+We will repeat this process with the two remaining components
+**second component**
+We repeat the process with the second component.
+We plot the contribution of  all players to the second component.
+```{r}
+fviz_contrib(pca, choice = "ind", axes = 2)
+```
+
+
+Now, let´s see the contribution of the 10 first players to the second component.
+
+```{r}
+names_z1 = names[order(get_pca_ind(pca)$contrib[,2],decreasing=T)]
+fviz_contrib(pca, choice = "ind", axes = 2, top=10)+scale_x_discrete(labels=names_z1)
+
+```
+
+
+
+**Third component**
+We repeat the process with the third component.
+We plot the contribution of  all players to the third component.
+```{r}
+fviz_contrib(pca, choice = "ind", axes = 3)
+```
+
+
+
+now, let´s see the contribution of the 10 first players
+
+```{r}
+names_z1 = names[order(get_pca_ind(pca)$contrib[,3],decreasing=T)]
+fviz_contrib(pca, choice = "ind", axes = 3, top=10)+scale_x_discrete(labels=names_z1)
+
+```
+
+
+
+
+##Factor analysis 
+
+
+
+Let´s continue with an analytical tool to reduce the dimension.
+This tool find the relationship between latent variables and indicators.
+
+```{r}
+
+library(tidyverse)
+library(VIM)
+library(Quandl)
+library(VIM)
+library(lubridate)
+library(GGally)
+library(factoextra)
+library(quantmod)
+```
+
+First of all, we are going to prepare the data
+```{r}
+data_FA=data
+data_FA$name=NULL
+data_FA$level=NULL
+```
+
+
+
+Let´s see with happens with a *5*-factor model
+```{r}
+factor=factanal(data_FA, factors=5, rotation="none", scores="regression")
+factor
+cbind(factor$loadings, factor$uniquenesses)
+```
+The uniqueness is very high for some variables. And a high uniqueness for a variable indicates that the factors do not account well for its variance. But it is low for most of the variables
+
+
+
+
+
+Let´s prove with three factors rotation varimax , and Barlett estimation for scores
+```{r}
+factor= factanal(data_FA, factors =5, rotation="varimax", scores="Bartlett")
+factor
+cbind(factor$loadings, factor$uniquenesses)
+```
+
+We have obtained the same results as beefore.
+
+
+Now, let´s try it with *7* factors
+
+```{r}
+factor=factanal(data_FA, factors = 7, rotation="none", scores="regression")
+factor
+cbind(factor$loadings, factor$uniquenesses)
+```
+
+We obtain similar result of the uniqueness as before, (as for 5 factors)
+
+Let´s prove with three factors rotation varimax , and Barlett estimation for scores
+```{r}
+factor=factanal(data_FA, factors = 7, rotation="varimax", scores="Bartlett")
+factor
+cbind(factor$loadings, factor$uniquenesses)
+```
+
+We again obtain similar results.
+
+
+Let´s prove with *10* factors
+```{r}
+factor=factanal(data_FA, factors = 10, rotation="none", scores="regression")
+factor
+cbind(factor$loadings, factor$uniquenesses)
+```
+Now we obtain lower values for the uniqueness
+
+Let´s prove with three factors rotation varimax , and Barlett estimation for scores
+```{r}
+factor=factanal(data_FA, factors = 10, rotation="varimax", scores="Bartlett")
+factor
+cbind(factor$loadings, factor$uniquenesses)
+```
+The values are the same the same as the previous 
+
+
+
+After this analysis I would chose 5 factors, because although with 10 factors the uniqueness is less,I think that 10 factors are too many if we only have 16 variables. And the input if we choose 7 is similar as if we chose 5, so I think that 5 factors is a better option.
+
+
+##Clustering
+
+
+Let´s use the last tool, clustering.
+Clustering is a tool that classify the observations in a data matrix into homogeneous groups, so that observations of the same group should be similar, and observations in different groups should be different.
+This tool measures similarity taking into account distances.
+It is subjective
+
+```{r}
+library(factoextra)
+library(cluster)
+library(mclust)
+library(kernlab)
+```
+
+There are different types of clustering
+*Kmeans*
+We will start with kmeans.
+Clustering consists on randomly select K centroids, assign each point to the nearest centroid, recalculate centroid based on assigned classes and repeat this process until the centroids do not change.
+Before we have to scale the data because the variables of our database are very different.
+And obviously, we have to remove factors and characters.
+```{r}
+data_cl=data
+data_cl$name=NULL
+data_cl$level=NULL
+data_cl=scale(data_cl)
+```
+
+
+We will use the elbow method to compute the optimal number of clusters
+```{r}
+evaluation = data.frame(clusters = 1:10, WSS = 0)
+for (i in 1:10){
+km = kmeans(data_cl,
+center = evaluation$clusters[i],
+nstart = 25)
+evaluation$WSS[i] = sum((data_cl - km$centers[km$cluster,])^2)
+}
+
+```
+
+
+We plot the result
+```{r}
+ggplot(evaluation) + aes(x = clusters, y = WSS) +
+geom_point() + geom_line() +
+geom_vline(xintercept = 3, linetype = 2) +
+scale_x_continuous(breaks = 1:10) +
+theme_minimal() + theme(text = element_text(size = 6))+
+labs(title = "Optimal number of clusters", subtitle = "Elbow method") +
+xlab("Number of clusters k") + ylab("Total Within Sum of Squares")
+```
+Following the elbow method I think that the optimal number of cluster is 3
+
+```{r}
+fit= kmeans(data_cl, center = 3, nstart = 1000)
+fviz_cluster(fit, data = data_cl, labelsize = 6) +
+theme(text = element_text(size = 6))
+```
+
+I have removed the name of the player because it is impossible to distinguish them because they are very close
+
+
+Let´s plot each center in order to understand better  the variables that are in each center.
+```{r}
+centers=km$centers
+barplot(centers[1,], las=2, col="darkblue")
+barplot(centers[2,], las=2, col="darkblue")
+barplot(centers[3,], las=2, col="darkblue")
+```
+
+
+
+
+**PAM**
+
+
+Let´s continue with K-medoids or PAM.
+It is similar to k-means,but now the centers are indeed observations (medoids) instead of means
+
+
+As before, we are going to plot what happens with the first 10 centers in order to choose the best option.
+```{r}
+fviz_nbclust(data_cl, pam, method = 'silhouette', k.max = 10)
+
+```
+
+After look at the plot, I think that 2 centers is the best option
+```{r}
+cl.pam=eclust(data_cl, "pam", stand=TRUE, k=2, graph=F)
+
+fviz_cluster(cl.pam, data = X, geom = c("point"), pointsize=1)+
+  theme_minimal()+scale_fill_brewer(palette="Paired")
+
+```
+I have removed the names because they can not be distinguish, they are very close.
+
+
+**Kernel k-means**
+
+
+Now, we will work with Kernel k-means, partitioning clustering based on a non-linear distance
+(Firstly we have to create a matrix)
+
+```{r}
+cl.ker=kkmeans(as.matrix(data_cl), centers=3, kernel="rbfdot")
+centers(cl.ker)
+size(cl.ker)
+withinss(cl.ker)
+
+cl1.ker = list(data = data_cl, cluster = cl.ker@.Data)
+
+fviz_cluster(cl1.ker, geom = c("point"), ellipse=F,pointsize=1)+
+  theme_minimal()+geom_text(label=names,hjust=0, vjust=0,size=2,check_overlap = T)+scale_fill_brewer(palette="Paired")
+
+
+```
+
+
+I have decide two select 4 centers as before, but when I have seen the plot I have decide that 5 centers would be a better option.
+```{r}
+cl.ker=kkmeans(as.matrix(data_cl), centers=4, kernel="rbfdot")
+cl1.ker = list(data = data_cl, cluster = cl.ker@.Data)
+
+fviz_cluster(cl1.ker, geom = c("point"), ellipse=F,pointsize=1)+
+  theme_minimal()+geom_text(label=names,hjust=0, vjust=0,size=2,check_overlap = T)+scale_fill_brewer(palette="Paired")
+
+```
+
+I think that  4 centers is better for this type of clustering, because in the plot the difference between groups is more clear.
+
+**Hierarchical clustering**
+
+
+Let´s continue with a different clustering, Hierarchical clustering, specifically we will plot a dendogram, which is  different if we compare it with the previous ones.
+
+We will prove with 4 and 5 centers, and after see the plot we will decide the one that we prefer
+
+```{r}
+d = dist(data_cl, method = "euclidean")
+hc = hclust(d, method = "complete")
+
+#fviz_dend(hc, k = 4, cex = 0.35, rect = T) +
+#theme(text = element_text(size = 6))
+
+
+```
+
+
+```{r}
+#fviz_dend(hc, k = 5, cex = 0.35, rect = T) +
+#theme(text = element_text(size = 6))
+```
+
+I have been trying this code, but my laptop does not have power enough to plot this two dendograms, so I can not choose if I prefer 4 centers or 5.
+
+
+
+
+
+And that is the hole analysis of the database using unsupervised learning.
+As we have seen using unsupervised models such as PCA, FACTOR ANALYSIS AND CLUSTERING, we can reduce the dimension of our data and group them, taking into account if they are similar and they have something in common.
+The disadvantage of this tools is that everything is subjective, so it is very difficult to know if we are doing well.
+
